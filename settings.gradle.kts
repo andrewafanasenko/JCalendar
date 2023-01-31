@@ -13,4 +13,4 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "JCalendar"
-include ':app'
+include(":app")
