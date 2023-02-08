@@ -45,7 +45,8 @@ fun JCalendar(
         )
         HorizontalPager(
             modifier = Modifier.fillMaxWidth(),
-            count = months.count()
+            count = months.count(),
+            verticalAlignment = Alignment.Top
         ) {
             MonthContent(months[it])
         }
@@ -61,11 +62,12 @@ fun MonthContent(month: Month) {
                 horizontalArrangement = Arrangement.Center
             ) {
                 it.days.forEach {
-                    Text(
-                        modifier = Modifier.weight(1f),
-                        text = it.value.dayOfMonth.toString(),
-                        textAlign = TextAlign.Center
-                    )
+                    Box(modifier = Modifier.weight(1f)) {
+                        Text(
+                            modifier = Modifier.align(Alignment.Center),
+                            text = it.value.dayOfMonth.toString()
+                        )
+                    }
                 }
             }
         }
@@ -104,7 +106,12 @@ fun YearMonth.getMonthWeeks(firstDayOfWeek: DayOfWeek): List<Week> {
         val previousMonthDates = minusMonths(1).getMonthDatesList()
         dates.addAll(0, previousMonthDates.takeLast(shift.absoluteValue))
     }
-    val daysFromNextMonth = daysOfWeekSorted.count() - (dates.count() % daysOfWeekSorted.count())
+    val daysToGetFromNextMonth = dates.count() % daysOfWeekSorted.count()
+    val daysFromNextMonth = if (daysToGetFromNextMonth > 0) {
+        daysOfWeekSorted.count() - daysToGetFromNextMonth
+    } else {
+        0
+    }
     if (daysFromNextMonth > 0) {
         val nextMonthDates = plusMonths(1).getMonthDatesList()
         dates.addAll(nextMonthDates.take(daysFromNextMonth))
