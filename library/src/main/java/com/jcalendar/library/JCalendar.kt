@@ -1,5 +1,6 @@
 package com.jcalendar.library
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -7,40 +8,44 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.graphics.Color
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
+import com.jcalendar.library.model.Day
 import com.jcalendar.library.model.Month
 import com.jcalendar.library.model.Week
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
-import java.time.temporal.ChronoUnit
 import kotlin.math.absoluteValue
 
 @OptIn(ExperimentalPagerApi::class)
 @Composable
 fun JCalendar(
     modifier: Modifier = Modifier,
-    startMonth: YearMonth = YearMonth.now(),
-    endMonth: YearMonth = YearMonth.now(),
-    currentDate: LocalDate = LocalDate.now(),
+    calendarState: JCalendarState = rememberJCalendarState(),
     firstDayOfWeek: DayOfWeek = DayOfWeek.MONDAY
 ) {
-    if (startMonth.isAfter(endMonth)) {
+    if (calendarState.startMonth.isAfter(calendarState.endMonth)) {
         throw RuntimeException("End month should be greater or equal to start month")
     }
-    val currentYearMonth = YearMonth.from(currentDate)
-    if (currentYearMonth.isBefore(startMonth) || currentYearMonth.isAfter(endMonth)) {
-        throw RuntimeException("Current date should be in startMonth..endMonth range")
+    val currentYearMonth = YearMonth.from(calendarState.selectedDate)
+    if (currentYearMonth.isBefore(calendarState.startMonth) || currentYearMonth.isAfter(
+            calendarState.endMonth
+        )
+    ) {
+        throw RuntimeException("Current date should be within startMonth..endMonth range")
     }
     Box(modifier = modifier) {
         val months = getMonths(
-            startMonth = startMonth,
-            endMonth = endMonth,
-            currentDate = currentDate,
+            startMonth = calendarState.startMonth,
+            endMonth = calendarState.endMonth,
+            selectedDate = calendarState.selectedDate,
             firstDayOfWeek = firstDayOfWeek
         )
         HorizontalPager(
@@ -62,10 +67,14 @@ fun MonthContent(month: Month) {
                 horizontalArrangement = Arrangement.Center
             ) {
                 it.days.forEach {
-                    Box(modifier = Modifier.weight(1f)) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .background(if (it.isSelected) Color.Blue else Color.White)
+                    ) {
                         Text(
                             modifier = Modifier.align(Alignment.Center),
-                            text = it.value.dayOfMonth.toString()
+                            text = it.date.dayOfMonth.toString()
                         )
                     }
                 }
@@ -77,19 +86,23 @@ fun MonthContent(month: Month) {
 fun getMonths(
     startMonth: YearMonth,
     endMonth: YearMonth,
-    currentDate: LocalDate,
+    selectedDate: LocalDate,
     firstDayOfWeek: DayOfWeek
 ): List<Month> {
     var month = startMonth
     val months = mutableListOf<YearMonth>()
-    while (month.isBefore(endMonth)) {
+    if (month == endMonth) {
         months.add(month)
-        month = month.plusMonths(1)
+    } else {
+        while (month.isBefore(endMonth)) {
+            months.add(month)
+            month = month.plusMonths(1)
+        }
     }
-    return months.map { Month(it.getMonthWeeks(firstDayOfWeek)) }
+    return months.map { Month(it.getMonthWeeks(firstDayOfWeek, selectedDate)) }
 }
 
-fun YearMonth.getMonthWeeks(firstDayOfWeek: DayOfWeek): List<Week> {
+fun YearMonth.getMonthWeeks(firstDayOfWeek: DayOfWeek, selectedDate: LocalDate): List<Week> {
     val dates = mutableListOf<LocalDate>()
     val daysOfWeek = DayOfWeek.values().toMutableList()
     val startDayIndex = daysOfWeek.indexOf(firstDayOfWeek)
@@ -120,9 +133,14 @@ fun YearMonth.getMonthWeeks(firstDayOfWeek: DayOfWeek): List<Week> {
     dates.chunked(daysOfWeekSorted.count()).map { datesInWeek ->
         weeks.add(
             Week(
-                days = daysOfWeekSorted.mapIndexed { index, dayOfWeek ->
-                    dayOfWeek to datesInWeek.first { it.dayOfWeek == dayOfWeek }
-                }.toMap()
+                days = daysOfWeekSorted.map { dayOfWeek ->
+                    val date = datesInWeek.first { it.dayOfWeek == dayOfWeek }
+                    Day(
+                        dayOfWeek = dayOfWeek,
+                        date = date,
+                        isSelected = selectedDate == date
+                    )
+                }
             )
         )
     }
@@ -139,4 +157,47 @@ fun YearMonth.getMonthDatesList(): List<LocalDate> {
         date = date.plusDays(1)
     }
     return monthDates
+}
+
+@Composable
+fun rememberJCalendarState(
+    startMonth: YearMonth = YearMonth.now(),
+    endMonth: YearMonth = startMonth,
+    selectedDate: LocalDate = LocalDate.now()
+): JCalendarState {
+    return rememberSaveable(
+        startMonth, endMonth, selectedDate,
+        saver = JCalendarSaver.Saver
+    ) {
+        JCalendarState(
+            startMonth = startMonth,
+            endMonth = endMonth,
+            selectedDate = selectedDate
+        )
+    }
+}
+
+data class JCalendarState(
+    val startMonth: YearMonth = YearMonth.now(),
+    val endMonth: YearMonth = YearMonth.now(),
+    val selectedDate: LocalDate = LocalDate.now()
+)
+
+class JCalendarSaver {
+    companion object {
+
+        val Saver: Saver<JCalendarState, *> = listSaver(
+            save = { calendarState: JCalendarState ->
+                listOf(calendarState.startMonth, calendarState.endMonth, calendarState.selectedDate)
+            },
+            restore = { restorationList: List<Any?> ->
+                JCalendarState(
+                    startMonth = restorationList[0] as YearMonth,
+                    endMonth = restorationList[1] as YearMonth,
+                    selectedDate = restorationList[2] as LocalDate
+
+                )
+            }
+        )
+    }
 }
