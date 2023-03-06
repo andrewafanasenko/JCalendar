@@ -35,16 +35,6 @@ fun JCalendar(
     modifier: Modifier = Modifier,
     calendarState: JCalendarState = rememberJCalendarState(),
 ) {
-    if (calendarState.startMonth.isAfter(calendarState.endMonth)) {
-        throw RuntimeException("End month should be greater or equal to start month")
-    }
-    val currentYearMonth = YearMonth.from(calendarState.selectedDate)
-    if (currentYearMonth.isBefore(calendarState.startMonth) || currentYearMonth.isAfter(
-            calendarState.endMonth
-        )
-    ) {
-        throw RuntimeException("Current date should be within startMonth..endMonth range")
-    }
     Box(modifier = modifier) {
         HorizontalPager(
             modifier = Modifier.fillMaxWidth(),
@@ -125,6 +115,13 @@ data class JCalendarState(
     val months: List<Month>
 
     init {
+        if (startMonth.isAfter(endMonth)) {
+            throw RuntimeException("End month should be greater or equal to start month")
+        }
+        val currentYearMonth = YearMonth.from(selectedDate)
+        if (currentYearMonth.isBefore(startMonth) || currentYearMonth.isAfter(endMonth)) {
+            throw RuntimeException("Current date should be within startMonth..endMonth range")
+        }
         months = getMonths(startMonth, endMonth, selectedDate, firstDayOfWeek)
     }
 
