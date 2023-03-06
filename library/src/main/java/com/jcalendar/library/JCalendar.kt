@@ -1,19 +1,24 @@
 package com.jcalendar.library
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
 import com.jcalendar.library.model.Day
@@ -53,33 +58,49 @@ fun JCalendar(
             count = months.count(),
             verticalAlignment = Alignment.Top
         ) {
-            MonthContent(months[it])
+            MonthContent(months[it], calendarState)
         }
     }
 }
 
 @Composable
-fun MonthContent(month: Month) {
+fun MonthContent(month: Month, calendarState: JCalendarState) {
     Column(modifier = Modifier.fillMaxWidth()) {
         month.weeks.forEach {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                it.days.forEach {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .background(if (it.isSelected) Color.Blue else Color.White)
-                    ) {
-                        Text(
-                            modifier = Modifier.align(Alignment.Center),
-                            text = it.date.dayOfMonth.toString()
-                        )
-                    }
-                }
-            }
+            WeekContent(it, calendarState)
         }
+    }
+}
+
+@Composable
+fun WeekContent(week: Week, calendarState: JCalendarState) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center
+    ) {
+        week.days.forEach {
+            DayContent(it, calendarState)
+        }
+    }
+}
+
+@Composable
+fun RowScope.DayContent(day: Day, calendarState: JCalendarState) {
+    Box(
+        modifier = Modifier
+            .weight(1f)
+            .background(if (day.isSelected) Color.Cyan else Color.White)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                role = Role.Button,
+                onClick = { calendarState.selectDay(day) }
+            )
+    ) {
+        Text(
+            modifier = Modifier.align(Alignment.Center),
+            text = day.date.dayOfMonth.toString()
+        )
     }
 }
 
@@ -181,7 +202,11 @@ data class JCalendarState(
     val startMonth: YearMonth = YearMonth.now(),
     val endMonth: YearMonth = YearMonth.now(),
     val selectedDate: LocalDate = LocalDate.now()
-)
+) {
+    fun selectDay(day: Day) {
+
+    }
+}
 
 class JCalendarSaver {
     companion object {
