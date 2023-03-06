@@ -34,7 +34,6 @@ import kotlin.math.absoluteValue
 fun JCalendar(
     modifier: Modifier = Modifier,
     calendarState: JCalendarState = rememberJCalendarState(),
-    firstDayOfWeek: DayOfWeek = DayOfWeek.MONDAY
 ) {
     if (calendarState.startMonth.isAfter(calendarState.endMonth)) {
         throw RuntimeException("End month should be greater or equal to start month")
@@ -47,18 +46,12 @@ fun JCalendar(
         throw RuntimeException("Current date should be within startMonth..endMonth range")
     }
     Box(modifier = modifier) {
-        val months = getMonths(
-            startMonth = calendarState.startMonth,
-            endMonth = calendarState.endMonth,
-            selectedDate = calendarState.selectedDate,
-            firstDayOfWeek = firstDayOfWeek
-        )
         HorizontalPager(
             modifier = Modifier.fillMaxWidth(),
-            count = months.count(),
+            count = calendarState.months.count(),
             verticalAlignment = Alignment.Top
         ) {
-            MonthContent(months[it], calendarState)
+            MonthContent(calendarState.months[it], calendarState)
         }
     }
 }
@@ -104,82 +97,6 @@ fun RowScope.DayContent(day: Day, calendarState: JCalendarState) {
     }
 }
 
-fun getMonths(
-    startMonth: YearMonth,
-    endMonth: YearMonth,
-    selectedDate: LocalDate,
-    firstDayOfWeek: DayOfWeek
-): List<Month> {
-    var month = startMonth
-    val months = mutableListOf<YearMonth>()
-    if (month == endMonth) {
-        months.add(month)
-    } else {
-        while (month.isBefore(endMonth)) {
-            months.add(month)
-            month = month.plusMonths(1)
-        }
-    }
-    return months.map { Month(it.getMonthWeeks(firstDayOfWeek, selectedDate)) }
-}
-
-fun YearMonth.getMonthWeeks(firstDayOfWeek: DayOfWeek, selectedDate: LocalDate): List<Week> {
-    val dates = mutableListOf<LocalDate>()
-    val daysOfWeek = DayOfWeek.values().toMutableList()
-    val startDayIndex = daysOfWeek.indexOf(firstDayOfWeek)
-    val daysBeforeStart = daysOfWeek.subList(0, startDayIndex)
-    val daysAfterStart = daysOfWeek.subList(startDayIndex, daysOfWeek.size)
-    val daysOfWeekSorted = daysAfterStart + daysBeforeStart
-    val weeks = mutableListOf<Week>()
-
-    val currentMonthDates = getMonthDatesList()
-    dates.addAll(currentMonthDates)
-
-    val shift = daysOfWeekSorted.first().value - currentMonthDates.first().dayOfWeek.value
-    if (shift.absoluteValue > 0) {
-        val previousMonthDates = minusMonths(1).getMonthDatesList()
-        dates.addAll(0, previousMonthDates.takeLast(shift.absoluteValue))
-    }
-    val daysToGetFromNextMonth = dates.count() % daysOfWeekSorted.count()
-    val daysFromNextMonth = if (daysToGetFromNextMonth > 0) {
-        daysOfWeekSorted.count() - daysToGetFromNextMonth
-    } else {
-        0
-    }
-    if (daysFromNextMonth > 0) {
-        val nextMonthDates = plusMonths(1).getMonthDatesList()
-        dates.addAll(nextMonthDates.take(daysFromNextMonth))
-    }
-
-    dates.chunked(daysOfWeekSorted.count()).map { datesInWeek ->
-        weeks.add(
-            Week(
-                days = daysOfWeekSorted.map { dayOfWeek ->
-                    val date = datesInWeek.first { it.dayOfWeek == dayOfWeek }
-                    Day(
-                        dayOfWeek = dayOfWeek,
-                        date = date,
-                        isSelected = selectedDate == date
-                    )
-                }
-            )
-        )
-    }
-    return weeks
-}
-
-
-fun YearMonth.getMonthDatesList(): List<LocalDate> {
-    var date = atDay(1)
-    val monthEndDate = date.plusMonths(1).withDayOfMonth(1)
-    val monthDates = mutableListOf<LocalDate>()
-    while (date.isBefore(monthEndDate)) {
-        monthDates.add(date)
-        date = date.plusDays(1)
-    }
-    return monthDates
-}
-
 @Composable
 fun rememberJCalendarState(
     startMonth: YearMonth = YearMonth.now(),
@@ -201,8 +118,94 @@ fun rememberJCalendarState(
 data class JCalendarState(
     val startMonth: YearMonth = YearMonth.now(),
     val endMonth: YearMonth = YearMonth.now(),
-    val selectedDate: LocalDate = LocalDate.now()
+    val selectedDate: LocalDate = LocalDate.now(),
+    val firstDayOfWeek: DayOfWeek = DayOfWeek.MONDAY
 ) {
+
+    val months: List<Month>
+
+    init {
+        months = getMonths(startMonth, endMonth, selectedDate, firstDayOfWeek)
+    }
+
+    private fun getMonths(
+        startMonth: YearMonth,
+        endMonth: YearMonth,
+        selectedDate: LocalDate,
+        firstDayOfWeek: DayOfWeek
+    ): List<Month> {
+        var month = startMonth
+        val months = mutableListOf<YearMonth>()
+        if (month == endMonth) {
+            months.add(month)
+        } else {
+            while (month.isBefore(endMonth)) {
+                months.add(month)
+                month = month.plusMonths(1)
+            }
+        }
+        return months.map { Month(it.getMonthWeeks(firstDayOfWeek, selectedDate)) }
+    }
+
+    private fun YearMonth.getMonthWeeks(
+        firstDayOfWeek: DayOfWeek,
+        selectedDate: LocalDate
+    ): List<Week> {
+        val dates = mutableListOf<LocalDate>()
+        val daysOfWeek = DayOfWeek.values().toMutableList()
+        val startDayIndex = daysOfWeek.indexOf(firstDayOfWeek)
+        val daysBeforeStart = daysOfWeek.subList(0, startDayIndex)
+        val daysAfterStart = daysOfWeek.subList(startDayIndex, daysOfWeek.size)
+        val daysOfWeekSorted = daysAfterStart + daysBeforeStart
+        val weeks = mutableListOf<Week>()
+
+        val currentMonthDates = getMonthDatesList()
+        dates.addAll(currentMonthDates)
+
+        val shift = daysOfWeekSorted.first().value - currentMonthDates.first().dayOfWeek.value
+        if (shift.absoluteValue > 0) {
+            val previousMonthDates = minusMonths(1).getMonthDatesList()
+            dates.addAll(0, previousMonthDates.takeLast(shift.absoluteValue))
+        }
+        val daysToGetFromNextMonth = dates.count() % daysOfWeekSorted.count()
+        val daysFromNextMonth = if (daysToGetFromNextMonth > 0) {
+            daysOfWeekSorted.count() - daysToGetFromNextMonth
+        } else {
+            0
+        }
+        if (daysFromNextMonth > 0) {
+            val nextMonthDates = plusMonths(1).getMonthDatesList()
+            dates.addAll(nextMonthDates.take(daysFromNextMonth))
+        }
+
+        dates.chunked(daysOfWeekSorted.count()).map { datesInWeek ->
+            weeks.add(
+                Week(
+                    days = daysOfWeekSorted.map { dayOfWeek ->
+                        val date = datesInWeek.first { it.dayOfWeek == dayOfWeek }
+                        Day(
+                            dayOfWeek = dayOfWeek,
+                            date = date,
+                            isSelected = selectedDate == date
+                        )
+                    }
+                )
+            )
+        }
+        return weeks
+    }
+
+    private fun YearMonth.getMonthDatesList(): List<LocalDate> {
+        var date = atDay(1)
+        val monthEndDate = date.plusMonths(1).withDayOfMonth(1)
+        val monthDates = mutableListOf<LocalDate>()
+        while (date.isBefore(monthEndDate)) {
+            monthDates.add(date)
+            date = date.plusDays(1)
+        }
+        return monthDates
+    }
+
     fun selectDay(day: Day) {
 
     }
