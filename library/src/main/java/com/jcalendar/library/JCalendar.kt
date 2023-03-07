@@ -11,10 +11,13 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -112,7 +115,7 @@ data class JCalendarState(
     val firstDayOfWeek: DayOfWeek = DayOfWeek.MONDAY
 ) {
 
-    val months: List<Month>
+    var months by mutableStateOf(listOf<Month>())
 
     init {
         if (startMonth.isAfter(endMonth)) {
@@ -203,8 +206,18 @@ data class JCalendarState(
         return monthDates
     }
 
-    fun selectDay(day: Day) {
-
+    fun selectDay(selectedDay: Day) {
+        months = months.map { month ->
+            month.copy(
+                weeks = month.weeks.map { week ->
+                    week.copy(
+                        days = week.days.map { day ->
+                            day.copy(isSelected = day.date == selectedDay.date)
+                        }
+                    )
+                }
+            )
+        }
     }
 }
 
