@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
+import com.google.accompanist.pager.rememberPagerState
 import com.jcalendar.library.model.Day
 import com.jcalendar.library.model.Month
 import com.jcalendar.library.model.Week
@@ -38,9 +39,11 @@ fun JCalendar(
     modifier: Modifier = Modifier,
     calendarState: JCalendarState = rememberJCalendarState(),
 ) {
+    val pagerState = rememberPagerState(initialPage = calendarState.selectedMonthPosition)
     Box(modifier = modifier) {
         HorizontalPager(
             modifier = Modifier.fillMaxWidth(),
+            state = pagerState,
             count = calendarState.months.count(),
             verticalAlignment = Alignment.Top
         ) {
@@ -116,6 +119,7 @@ data class JCalendarState(
 ) {
 
     var months by mutableStateOf(listOf<Month>())
+    var selectedMonthPosition by mutableStateOf(0)
 
     init {
         if (startMonth.isAfter(endMonth)) {
@@ -126,6 +130,15 @@ data class JCalendarState(
             throw RuntimeException("Current date should be within startMonth..endMonth range")
         }
         months = getMonths(startMonth, endMonth, selectedDate, firstDayOfWeek)
+        months.indexOfFirst { month ->
+            month.weeks.any { week ->
+                week.days.any { day ->
+                    day.isSelected
+                }
+            }
+        }.let {
+            selectedMonthPosition = if (it == -1) 0 else it
+        }
     }
 
     private fun getMonths(
@@ -139,7 +152,7 @@ data class JCalendarState(
         if (month == endMonth) {
             months.add(month)
         } else {
-            while (month.isBefore(endMonth)) {
+            while (month.isBefore(endMonth.plusMonths(1))) {
                 months.add(month)
                 month = month.plusMonths(1)
             }
