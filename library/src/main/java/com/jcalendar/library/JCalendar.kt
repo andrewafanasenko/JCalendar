@@ -7,9 +7,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -22,6 +25,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.rememberPagerState
@@ -38,6 +43,11 @@ import kotlin.math.absoluteValue
 fun JCalendar(
     modifier: Modifier = Modifier,
     calendarState: JCalendarState = rememberJCalendarState(),
+    dayContent: @Composable (Day) -> Unit = { day: Day ->
+        DayContent(day) {
+            calendarState.selectDay(day)
+        }
+    }
 ) {
     val pagerState = rememberPagerState(initialPage = calendarState.selectedMonthPosition)
     Box(modifier = modifier) {
@@ -47,48 +57,80 @@ fun JCalendar(
             count = calendarState.months.count(),
             verticalAlignment = Alignment.Top
         ) {
-            MonthContent(calendarState.months[it], calendarState)
+            MonthContent(calendarState.months[it], dayContent)
         }
     }
 }
 
 @Composable
-fun MonthContent(month: Month, calendarState: JCalendarState) {
+fun MonthContent(
+    month: Month,
+    dayContent: @Composable (Day) -> Unit
+) {
     Column(modifier = Modifier.fillMaxWidth()) {
         month.weeks.forEach {
-            WeekContent(it, calendarState)
+            WeekContent(it, dayContent)
         }
     }
 }
 
 @Composable
-fun WeekContent(week: Week, calendarState: JCalendarState) {
+fun WeekContent(
+    week: Week,
+    dayContent: @Composable (Day) -> Unit
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center
+        horizontalArrangement = Arrangement.SpaceEvenly
     ) {
-        week.days.forEach {
-            DayContent(it, calendarState)
+        week.days.forEach { day ->
+            Box(modifier = Modifier.weight(1f)) {
+                dayContent.invoke(day)
+            }
         }
     }
 }
 
 @Composable
-fun RowScope.DayContent(day: Day, calendarState: JCalendarState) {
+fun DayContent(
+    day: Day,
+    modifier: Modifier = Modifier,
+    defaultTextColor: Color = Color.Black,
+    selectedTextColor: Color = Color.White,
+    height: Dp = Dp.Unspecified,
+    onClick: () -> Unit
+) {
+    val dayHeight = if (height == Dp.Unspecified) {
+        Modifier.aspectRatio(1f)
+    } else {
+        Modifier.height(height)
+    }
     Box(
         modifier = Modifier
-            .weight(1f)
-            .background(if (day.isSelected) Color.Cyan else Color.White)
+            .background(
+                color = if (day.isSelected) {
+                    MaterialTheme.colors.primary
+                } else {
+                    MaterialTheme.colors.surface
+                },
+                shape = CircleShape
+            )
+            .then(dayHeight)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
                 role = Role.Button,
-                onClick = { calendarState.selectDay(day) }
+                onClick = onClick
             )
+            .then(modifier)
     ) {
         Text(
-            modifier = Modifier.align(Alignment.Center),
-            text = day.date.dayOfMonth.toString()
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.Center),
+            text = day.date.dayOfMonth.toString(),
+            textAlign = TextAlign.Center,
+            color = if (day.isSelected) selectedTextColor else defaultTextColor
         )
     }
 }
