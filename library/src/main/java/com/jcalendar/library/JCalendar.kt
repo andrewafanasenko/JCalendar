@@ -50,23 +50,40 @@ fun JCalendar(
             calendarState.selectDay(day)
         }
     },
-    showDaysOfWeekTitles: Boolean = false,
+    showDaysOfWeekTitles: Boolean = true,
     dayOfWeekTitleContent: @Composable (DayOfWeek) -> Unit = { dayOfWeek: DayOfWeek ->
         DayOfWeekTitleContent(dayOfWeek)
-    }
+    },
 ) {
-    val pagerState = rememberPagerState(initialPage = calendarState.selectedMonthPosition)
+    val pagerState = rememberPagerState(initialPage = calendarState.scrollPosition)
     Column(modifier = modifier) {
         if (showDaysOfWeekTitles) {
             DayOfWeekTitlesContent(calendarState.firstDayOfWeek, dayOfWeekTitleContent)
         }
-        HorizontalPager(
-            modifier = Modifier.fillMaxWidth(),
-            state = pagerState,
-            count = calendarState.months.count(),
-            verticalAlignment = Alignment.Top
-        ) {
-            MonthContent(calendarState.months[it], dayContent)
+        if (calendarState.isWeekMode) {
+            HorizontalPager(
+                modifier = Modifier.fillMaxWidth(),
+                state = pagerState,
+                count = calendarState.weeks.count(),
+                verticalAlignment = Alignment.Top
+            ) {
+                WeekContent(
+                    week = calendarState.weeks[it],
+                    dayContent = dayContent
+                )
+            }
+        } else {
+            HorizontalPager(
+                modifier = Modifier.fillMaxWidth(),
+                state = pagerState,
+                count = calendarState.months.count(),
+                verticalAlignment = Alignment.Top
+            ) {
+                MonthContent(
+                    month = calendarState.months[it],
+                    dayContent = dayContent
+                )
+            }
         }
     }
 }
@@ -123,7 +140,7 @@ fun DayContent(
     selectedTextColor: Color = Color.White,
     textStyle: TextStyle = LocalTextStyle.current,
     height: Dp = Dp.Unspecified,
-    onClick: () -> Unit
+    onClick: (LocalDate) -> Unit = {}
 ) {
     val dayHeight = if (height == Dp.Unspecified) {
         Modifier.aspectRatio(1f)
@@ -145,7 +162,7 @@ fun DayContent(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
                 role = Role.Button,
-                onClick = onClick
+                onClick = { onClick.invoke(day.date) }
             )
             .then(modifier)
     ) {
@@ -181,17 +198,21 @@ fun rememberJCalendarState(
     startMonth: YearMonth = YearMonth.now(),
     endMonth: YearMonth = startMonth,
     selectedDate: LocalDate = LocalDate.now(),
-    firstDayOfWeek: DayOfWeek = DayOfWeek.MONDAY
+    firstDayOfWeek: DayOfWeek = DayOfWeek.MONDAY,
+    isWeekMode: Boolean = false,
+    onDateSelected: (LocalDate) -> Unit = {}
 ): JCalendarState {
     return rememberSaveable(
-        startMonth, endMonth, selectedDate, firstDayOfWeek,
+        startMonth, endMonth, selectedDate, firstDayOfWeek, isWeekMode, onDateSelected,
         saver = JCalendarSaver.Saver
     ) {
         JCalendarState(
             startMonth = startMonth,
             endMonth = endMonth,
             selectedDate = selectedDate,
-            firstDayOfWeek = firstDayOfWeek
+            firstDayOfWeek = firstDayOfWeek,
+            isWeekMode = isWeekMode,
+            onDateSelected = onDateSelected
         )
     }
 }
@@ -200,11 +221,14 @@ data class JCalendarState(
     val startMonth: YearMonth = YearMonth.now(),
     val endMonth: YearMonth = YearMonth.now(),
     val selectedDate: LocalDate = LocalDate.now(),
-    val firstDayOfWeek: DayOfWeek = DayOfWeek.MONDAY
+    val firstDayOfWeek: DayOfWeek = DayOfWeek.MONDAY,
+    val isWeekMode: Boolean = false,
+    val onDateSelected: (LocalDate) -> Unit = {}
 ) {
 
     var months by mutableStateOf(listOf<Month>())
-    var selectedMonthPosition by mutableStateOf(0)
+    var weeks by mutableStateOf(listOf<Week>())
+    var scrollPosition by mutableStateOf(0)
 
     init {
         if (startMonth.isAfter(endMonth)) {
@@ -215,14 +239,26 @@ data class JCalendarState(
             throw RuntimeException("Current date should be within startMonth..endMonth range")
         }
         months = getMonths(startMonth, endMonth, selectedDate, firstDayOfWeek)
-        months.indexOfFirst { month ->
-            month.weeks.any { week ->
+        weeks = months.map { it.weeks }.flatten().toSet().toList()
+
+        if (isWeekMode) {
+            weeks.indexOfFirst { week ->
                 week.days.any { day ->
                     day.isSelected
                 }
+            }.let {
+                scrollPosition = if (it == -1) 0 else it
             }
-        }.let {
-            selectedMonthPosition = if (it == -1) 0 else it
+        } else {
+            months.indexOfFirst { month ->
+                month.weeks.any { week ->
+                    week.days.any { day ->
+                        day.isSelected
+                    }
+                }
+            }.let {
+                scrollPosition = if (it == -1) 0 else it
+            }
         }
     }
 
@@ -303,16 +339,23 @@ data class JCalendarState(
     }
 
     fun selectDay(selectedDay: Day) {
-        months = months.map { month ->
-            month.copy(
-                weeks = month.weeks.map { week ->
-                    week.copy(
-                        days = week.days.map { day ->
-                            day.copy(isSelected = day.date == selectedDay.date)
-                        }
-                    )
-                }
-            )
+        fun Week.markSelectedDay() = days.map { day ->
+            onDateSelected.invoke(selectedDay.date)
+            day.copy(isSelected = day.date == selectedDay.date)
+        }
+
+        if (isWeekMode) {
+            weeks = weeks.map { week ->
+                week.copy(days = week.markSelectedDay())
+            }
+        } else {
+            months = months.map { month ->
+                month.copy(
+                    weeks = month.weeks.map { week ->
+                        week.copy(days = week.markSelectedDay())
+                    }
+                )
+            }
         }
     }
 }
@@ -330,14 +373,21 @@ class JCalendarSaver {
 
         val Saver: Saver<JCalendarState, *> = listSaver(
             save = { calendarState: JCalendarState ->
-                listOf(calendarState.startMonth, calendarState.endMonth, calendarState.selectedDate)
+                listOf(
+                    calendarState.startMonth,
+                    calendarState.endMonth,
+                    calendarState.selectedDate,
+                    calendarState.firstDayOfWeek,
+                    calendarState.isWeekMode
+                )
             },
             restore = { restorationList: List<Any?> ->
                 JCalendarState(
                     startMonth = restorationList[0] as YearMonth,
                     endMonth = restorationList[1] as YearMonth,
-                    selectedDate = restorationList[2] as LocalDate
-
+                    selectedDate = restorationList[2] as LocalDate,
+                    firstDayOfWeek = restorationList[3] as DayOfWeek,
+                    isWeekMode = restorationList[4] as Boolean
                 )
             }
         )
