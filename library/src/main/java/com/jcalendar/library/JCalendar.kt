@@ -50,16 +50,12 @@ fun JCalendar(
             calendarState.selectDay(day)
         }
     },
-    showDaysOfWeekTitles: Boolean = true,
-    dayOfWeekTitleContent: @Composable (DayOfWeek) -> Unit = { dayOfWeek: DayOfWeek ->
+    dayOfWeekTitleContent: (@Composable (DayOfWeek) -> Unit)? = { dayOfWeek: DayOfWeek ->
         DayOfWeekTitleContent(dayOfWeek)
     },
 ) {
     val pagerState = rememberPagerState(initialPage = calendarState.scrollPosition)
     Column(modifier = modifier) {
-        if (showDaysOfWeekTitles) {
-            DayOfWeekTitlesContent(calendarState.firstDayOfWeek, dayOfWeekTitleContent)
-        }
         if (calendarState.isWeekMode) {
             HorizontalPager(
                 modifier = Modifier.fillMaxWidth(),
@@ -67,10 +63,15 @@ fun JCalendar(
                 count = calendarState.weeks.count(),
                 verticalAlignment = Alignment.Top
             ) {
-                WeekContent(
-                    week = calendarState.weeks[it],
-                    dayContent = dayContent
-                )
+                Column {
+                    dayOfWeekTitleContent?.let {
+                        DayOfWeekTitlesContent(calendarState.firstDayOfWeek, dayOfWeekTitleContent)
+                    }
+                    WeekContent(
+                        week = calendarState.weeks[it],
+                        dayContent = dayContent
+                    )
+                }
             }
         } else {
             HorizontalPager(
@@ -79,10 +80,15 @@ fun JCalendar(
                 count = calendarState.months.count(),
                 verticalAlignment = Alignment.Top
             ) {
-                MonthContent(
-                    month = calendarState.months[it],
-                    dayContent = dayContent
-                )
+                Column {
+                    dayOfWeekTitleContent?.let {
+                        DayOfWeekTitlesContent(calendarState.firstDayOfWeek, dayOfWeekTitleContent)
+                    }
+                    MonthContent(
+                        month = calendarState.months[it],
+                        dayContent = dayContent
+                    )
+                }
             }
         }
     }
