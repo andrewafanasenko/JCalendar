@@ -50,6 +50,11 @@ fun JCalendar(
             calendarState.selectDay(day)
         }
     },
+    outDayContent: (@Composable (Day) -> Unit)? = { day: Day ->
+        DayContent(day = day, defaultTextColor = Color.Gray) {
+            calendarState.selectDay(day)
+        }
+    },
     dayOfWeekTitleContent: (@Composable (DayOfWeek) -> Unit)? = { dayOfWeek: DayOfWeek ->
         DayOfWeekTitleContent(dayOfWeek)
     },
@@ -86,7 +91,8 @@ fun JCalendar(
                     }
                     MonthContent(
                         month = calendarState.months[it],
-                        dayContent = dayContent
+                        dayContent = dayContent,
+                        outDayContent = outDayContent,
                     )
                 }
             }
@@ -113,11 +119,12 @@ private fun DayOfWeekTitlesContent(
 @Composable
 fun MonthContent(
     month: Month,
-    dayContent: @Composable (Day) -> Unit
+    dayContent: @Composable (Day) -> Unit,
+    outDayContent: @Composable ((Day) -> Unit)? = null
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         month.weeks.forEach {
-            WeekContent(it, dayContent)
+            WeekContent(it, dayContent, outDayContent)
         }
     }
 }
@@ -125,14 +132,19 @@ fun MonthContent(
 @Composable
 fun WeekContent(
     week: Week,
-    dayContent: @Composable (Day) -> Unit
+    dayContent: @Composable (Day) -> Unit,
+    outDayContent: @Composable ((Day) -> Unit)? = null
 ) {
     Row(
         modifier = Modifier.fillMaxWidth()
     ) {
         week.days.forEach { day ->
             Box(modifier = Modifier.weight(1f)) {
-                dayContent.invoke(day)
+                if (day.isOutDay && outDayContent != null) {
+                    outDayContent.invoke(day)
+                } else {
+                    dayContent.invoke(day)
+                }
             }
         }
     }
@@ -292,7 +304,6 @@ data class JCalendarState(
         selectedDate: LocalDate
     ): List<Week> {
         val dates = mutableListOf<LocalDate>()
-
         val weeks = mutableListOf<Week>()
 
         val currentMonthDates = getMonthDatesList()
@@ -301,8 +312,9 @@ data class JCalendarState(
         val daysOfWeekSorted = firstDayOfWeek.getSortedDaysOfWeek()
 
         val shift = daysOfWeekSorted.first().value - currentMonthDates.first().dayOfWeek.value
+
+        val previousMonthDates = minusMonths(1).getMonthDatesList()
         if (shift.absoluteValue > 0) {
-            val previousMonthDates = minusMonths(1).getMonthDatesList()
             dates.addAll(0, previousMonthDates.takeLast(shift.absoluteValue))
         }
         val daysToGetFromNextMonth = dates.count() % daysOfWeekSorted.count()
@@ -311,8 +323,9 @@ data class JCalendarState(
         } else {
             0
         }
+
+        val nextMonthDates = plusMonths(1).getMonthDatesList()
         if (daysFromNextMonth > 0) {
-            val nextMonthDates = plusMonths(1).getMonthDatesList()
             dates.addAll(nextMonthDates.take(daysFromNextMonth))
         }
 
@@ -324,7 +337,9 @@ data class JCalendarState(
                         Day(
                             dayOfWeek = dayOfWeek,
                             date = date,
-                            isSelected = selectedDate == date
+                            isSelected = selectedDate == date,
+                            isOutDay = previousMonthDates.contains(date) ||
+                                    nextMonthDates.contains(date)
                         )
                     }
                 )
