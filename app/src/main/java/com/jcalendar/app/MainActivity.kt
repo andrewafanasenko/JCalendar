@@ -22,6 +22,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.jcalendar.app.ui.theme.JCalendarTheme
 import com.jcalendar.library.JCalendar
+import com.jcalendar.library.model.CalendarMode
 import com.jcalendar.library.rememberJCalendarState
 import java.time.LocalDate
 import java.time.YearMonth
@@ -32,20 +33,20 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             JCalendarTheme(darkTheme = false) {
-                Greeting()
+                Calendar()
             }
         }
     }
 }
 
 @Composable
-fun Greeting() {
+fun Calendar() {
     var selectedDay by remember { mutableStateOf(LocalDate.now()) }
     val currentMonth = YearMonth.now()
     val calendarState = rememberJCalendarState(
         startMonth = currentMonth.minusMonths(3),
         endMonth = currentMonth.plusMonths(3),
-        isWeekMode = false,
+        mode = CalendarMode.MONTH,
         onDateSelected = { selectedDay = it }
     )
 
@@ -55,7 +56,7 @@ fun Greeting() {
             .background(Color.White)
     ) {
         JCalendar(
-            calendarState = calendarState
+            calendarState = calendarState,
         )
         Spacer(modifier = Modifier.height(32.dp))
         Text(
@@ -71,6 +72,6 @@ fun Greeting() {
 @Composable
 fun DefaultPreview() {
     JCalendarTheme {
-        Greeting()
+        Calendar()
     }
 }
