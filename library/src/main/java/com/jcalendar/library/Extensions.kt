@@ -1,6 +1,7 @@
 package com.jcalendar.library
 
 import com.jcalendar.library.model.Day
+import com.jcalendar.library.model.Month
 import com.jcalendar.library.model.Week
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -89,3 +90,23 @@ fun DayOfWeek.getSortedDaysOfWeek(): List<DayOfWeek> {
     val daysAfterStart = daysOfWeek.subList(startDayIndex, daysOfWeek.size)
     return daysAfterStart + daysBeforeStart
 }
+
+/**
+ * Returns [YearMonth] for given [Month] or null
+ */
+fun Month.getPrimaryYearMonth(): YearMonth? =
+    weeks.map { it.days }
+        .flatten()
+        .groupingBy { YearMonth.of(it.date.year, it.date.month) }
+        .eachCount()
+        .maxByOrNull { it.value }
+        ?.key
+
+/**
+ * Returns [YearMonth] for given [Week] (or null) based on days which appear more frequent
+ */
+fun Week.getPrimaryYearMonth(): YearMonth? =
+    days.groupingBy { YearMonth.of(it.date.year, it.date.month) }
+        .eachCount()
+        .maxByOrNull { it.value }
+        ?.key
