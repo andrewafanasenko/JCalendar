@@ -1,5 +1,6 @@
 package com.jcalendar.library
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -9,6 +10,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.LocalTextStyle
 import androidx.compose.material.MaterialTheme
@@ -26,10 +30,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
-import com.google.accompanist.pager.ExperimentalPagerApi
-import com.google.accompanist.pager.HorizontalPager
-import com.google.accompanist.pager.PagerState
-import com.google.accompanist.pager.rememberPagerState
 import com.jcalendar.library.model.CalendarMode
 import com.jcalendar.library.model.Day
 import com.jcalendar.library.model.Month
@@ -96,8 +96,8 @@ fun JCalendar(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-@OptIn(ExperimentalPagerApi::class)
 private fun MonthCalendar(
     calendarState: JCalendarState,
     dayOfWeekTitleContent: @Composable ((DayOfWeek) -> Unit)?,
@@ -107,13 +107,14 @@ private fun MonthCalendar(
     val pagerState = rememberPagerState(initialPage = calendarState.scrollPosition)
     HandleMonthChange(
         calendarState = calendarState,
-        pagerState = pagerState
+        pagerState = pagerState,
+        pageCount = calendarState.months.count()
     )
 
     HorizontalPager(
         modifier = Modifier.fillMaxWidth(),
         state = pagerState,
-        count = calendarState.months.count(),
+        pageCount = calendarState.months.count(),
         verticalAlignment = Alignment.Top
     ) {
         Column {
@@ -132,8 +133,8 @@ private fun MonthCalendar(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-@OptIn(ExperimentalPagerApi::class)
 private fun WeekCalendar(
     calendarState: JCalendarState,
     dayOfWeekTitleContent: @Composable ((DayOfWeek) -> Unit)?,
@@ -142,13 +143,14 @@ private fun WeekCalendar(
     val pagerState = rememberPagerState(initialPage = calendarState.scrollPosition)
     HandleMonthChange(
         calendarState = calendarState,
-        pagerState = pagerState
+        pagerState = pagerState,
+        pageCount = calendarState.weeks.count()
     )
 
     HorizontalPager(
         modifier = Modifier.fillMaxWidth(),
         state = pagerState,
-        count = calendarState.weeks.count(),
+        pageCount = calendarState.weeks.count(),
         verticalAlignment = Alignment.Top
     ) {
         Column {
@@ -167,22 +169,23 @@ private fun WeekCalendar(
     }
 }
 
-@OptIn(ExperimentalPagerApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun HandleMonthChange(
     calendarState: JCalendarState,
-    pagerState: PagerState
+    pagerState: PagerState,
+    pageCount: Int
 ) {
     val coroutineScope = rememberCoroutineScope()
     calendarState.scrollForward = {
-        if ((pagerState.currentPage + 1) in 0 until pagerState.pageCount) {
+        if ((pagerState.currentPage + 1) in 0 until pageCount) {
             coroutineScope.launch {
                 pagerState.animateScrollToPage(pagerState.currentPage + 1)
             }
         }
     }
     calendarState.scrollBack = {
-        if ((pagerState.currentPage - 1) in 0 until pagerState.pageCount) {
+        if ((pagerState.currentPage - 1) in 0 until pageCount) {
             coroutineScope.launch {
                 pagerState.animateScrollToPage(pagerState.currentPage - 1)
             }
