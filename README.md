@@ -89,15 +89,15 @@ fun JCalendar(
 )
 ```
 
-*`dayContent` takes `DayContent` composable function which represents month/week day and
+* `dayContent` takes `DayContent` composable function which represents month/week day and
 can be customized or replaced with own function.
 
-*`outDayContent` takes `DayContent` composable function and represents day from previous or next 
+* `outDayContent` takes `DayContent` composable function and represents day from previous or next 
 month. Can be also customized or replaced with own function. Setting of `outDayContent` will have
 no effect for calendar with `CalendarMode.MONTH` mode. If `outDayContent` is set to `null` - out
 days will be hidden.
 
-*`dayOfWeekTitleContent` takes `DayOfWeekTitleContent` composable function and represents day title
+* `dayOfWeekTitleContent` takes `DayOfWeekTitleContent` composable function and represents day title
 (such as S (Sunday), M(Monday)...). Can be also customized or replaced with own function. If
 `dayOfWeekTitleContent` is set to `null` - titles will be hidden
 
