@@ -8,14 +8,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.LocalTextStyle
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -25,11 +28,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
+import com.google.accompanist.pager.PagerState
 import com.google.accompanist.pager.rememberPagerState
 import com.jcalendar.library.model.CalendarMode
 import com.jcalendar.library.model.Day
 import com.jcalendar.library.model.Month
 import com.jcalendar.library.model.Week
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
@@ -98,6 +105,10 @@ private fun MonthCalendar(
     outDayContent: @Composable ((Day) -> Unit)?
 ) {
     val pagerState = rememberPagerState(initialPage = calendarState.scrollPosition)
+    HandleMonthChange(
+        calendarState = calendarState,
+        pagerState = pagerState
+    )
 
     HorizontalPager(
         modifier = Modifier.fillMaxWidth(),
@@ -129,6 +140,10 @@ private fun WeekCalendar(
     dayContent: @Composable (Day) -> Unit
 ) {
     val pagerState = rememberPagerState(initialPage = calendarState.scrollPosition)
+    HandleMonthChange(
+        calendarState = calendarState,
+        pagerState = pagerState
+    )
 
     HorizontalPager(
         modifier = Modifier.fillMaxWidth(),
@@ -145,12 +160,51 @@ private fun WeekCalendar(
             }
             WeekContent(
                 week = calendarState.weeks[it],
-                dayContent = dayContent
+                dayContent = dayContent,
+                outDayContent = dayContent
             )
         }
     }
 }
 
+@OptIn(ExperimentalPagerApi::class)
+@Composable
+private fun HandleMonthChange(
+    calendarState: JCalendarState,
+    pagerState: PagerState
+) {
+    val coroutineScope = rememberCoroutineScope()
+    calendarState.scrollForward = {
+        if ((pagerState.currentPage + 1) in 0 until pagerState.pageCount) {
+            coroutineScope.launch {
+                pagerState.animateScrollToPage(pagerState.currentPage + 1)
+            }
+        }
+    }
+    calendarState.scrollBack = {
+        if ((pagerState.currentPage - 1) in 0 until pagerState.pageCount) {
+            coroutineScope.launch {
+                pagerState.animateScrollToPage(pagerState.currentPage - 1)
+            }
+        }
+    }
+
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.currentPage }
+            .map {
+                when (calendarState.mode) {
+                    CalendarMode.MONTH -> calendarState.months.getOrNull(it)?.getPrimaryYearMonth()
+                    CalendarMode.WEEK -> calendarState.weeks.getOrNull(it)?.getPrimaryYearMonth()
+                }
+            }
+            .distinctUntilChanged()
+            .collect { yearMonth ->
+                yearMonth?.let {
+                    calendarState.onMonthChanged.invoke(it)
+                }
+            }
+    }
+}
 
 @Composable
 private fun DayOfWeekTitlesContent(
@@ -191,9 +245,12 @@ private fun WeekContent(
         modifier = Modifier.fillMaxWidth()
     ) {
         week.days.forEach { day ->
-            Box(modifier = Modifier.weight(1f)) {
-                if (day.isOutDay && outDayContent != null) {
-                    outDayContent.invoke(day)
+            Box(
+                modifier = Modifier.weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                if (day.isOutDay) {
+                    outDayContent?.invoke(day)
                 } else {
                     dayContent.invoke(day)
                 }
@@ -209,13 +266,13 @@ fun DayContent(
     defaultTextColor: Color = Color.Black,
     selectedTextColor: Color = Color.White,
     textStyle: TextStyle = LocalTextStyle.current,
-    height: Dp = Dp.Unspecified,
+    size: Dp = Dp.Unspecified,
     onClick: (LocalDate) -> Unit = {}
 ) {
-    val dayHeight = if (height == Dp.Unspecified) {
+    val dayHeight = if (size == Dp.Unspecified) {
         Modifier.aspectRatio(1f)
     } else {
-        Modifier.height(height)
+        Modifier.size(size)
     }
     Box(
         modifier = Modifier
@@ -234,7 +291,8 @@ fun DayContent(
                 role = Role.Button,
                 onClick = { onClick.invoke(day.date) }
             )
-            .then(modifier)
+            .then(modifier),
+        contentAlignment = Alignment.Center
     ) {
         Text(
             modifier = Modifier
@@ -251,12 +309,16 @@ fun DayContent(
 @Composable
 fun DayOfWeekTitleContent(
     dayOfWeek: DayOfWeek,
+    modifier: Modifier = Modifier,
+    dayOfWeekStyle: java.time.format.TextStyle = java.time.format.TextStyle.NARROW,
     textColor: Color = Color.DarkGray,
     textStyle: TextStyle = LocalTextStyle.current
 ) {
     Text(
-        modifier = Modifier.fillMaxWidth(),
-        text = dayOfWeek.getDisplayName(java.time.format.TextStyle.NARROW, Locale.getDefault()),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(modifier),
+        text = dayOfWeek.getDisplayName(dayOfWeekStyle, Locale.getDefault()),
         textAlign = TextAlign.Center,
         color = textColor,
         style = textStyle
@@ -270,10 +332,11 @@ fun rememberJCalendarState(
     selectedDate: LocalDate = LocalDate.now(),
     firstDayOfWeek: DayOfWeek = DayOfWeek.MONDAY,
     mode: CalendarMode = CalendarMode.MONTH,
-    onDateSelected: (LocalDate) -> Unit = {}
+    onDateSelected: (LocalDate) -> Unit = {},
+    onMonthChanged: (YearMonth) -> Unit = {}
 ): JCalendarState {
     return rememberSaveable(
-        startMonth, endMonth, selectedDate, firstDayOfWeek, mode, onDateSelected,
+        startMonth, endMonth, selectedDate, firstDayOfWeek, mode, onDateSelected, onMonthChanged,
         saver = JCalendarSaver.Saver
     ) {
         JCalendarState(
@@ -282,7 +345,8 @@ fun rememberJCalendarState(
             selectedDate = selectedDate,
             firstDayOfWeek = firstDayOfWeek,
             mode = mode,
-            onDateSelected = onDateSelected
+            onDateSelected = onDateSelected,
+            onMonthChanged = onMonthChanged
         )
     }
 }

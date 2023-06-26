@@ -17,12 +17,15 @@ data class JCalendarState(
     val selectedDate: LocalDate = LocalDate.now(),
     val firstDayOfWeek: DayOfWeek = DayOfWeek.MONDAY,
     val mode: CalendarMode = CalendarMode.MONTH,
-    val onDateSelected: (LocalDate) -> Unit = {}
+    val onDateSelected: (LocalDate) -> Unit = {},
+    val onMonthChanged: (YearMonth) -> Unit = {}
 ) {
 
     var months by mutableStateOf(listOf<Month>())
     var weeks by mutableStateOf(listOf<Week>())
     var scrollPosition by mutableStateOf(0)
+    var scrollForward: () -> Unit = {}
+    var scrollBack: () -> Unit = {}
 
     init {
         require(startMonth.isAfter(endMonth).not()) {
@@ -105,5 +108,13 @@ data class JCalendarState(
                 }
             }
         }
+    }
+
+    fun scrollForward() {
+        scrollForward.invoke()
+    }
+
+    fun scrollBack() {
+        scrollBack.invoke()
     }
 }
