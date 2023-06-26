@@ -129,7 +129,7 @@ JCalendar(
     dayOfWeekTitleContent = null
 )
 ```
-<img src="screenshots/week_without_title_calendar.png">
+<img src="screenshots/week_without_titles_calendar.png">
 
 Month calendar without out days
 
