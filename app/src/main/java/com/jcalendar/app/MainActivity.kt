@@ -23,10 +23,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -43,6 +45,7 @@ import com.jcalendar.library.JCalendar
 import com.jcalendar.library.model.CalendarMode
 import com.jcalendar.library.model.Day
 import com.jcalendar.library.rememberJCalendarState
+import kotlinx.coroutines.flow.distinctUntilChanged
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
@@ -82,9 +85,15 @@ private fun DefaultMonthCalendar() {
     val calendarState = rememberJCalendarState(
         startMonth = currentMonth.minusMonths(3),
         endMonth = currentMonth.plusMonths(3),
-        mode = CalendarMode.MONTH,
-        onDateSelected = { selectedDay = it }
+        mode = CalendarMode.MONTH
     )
+    LaunchedEffect(calendarState) {
+        snapshotFlow { calendarState.selectedDate }
+            .distinctUntilChanged()
+            .collect {
+                selectedDay = it
+            }
+    }
 
     CalendarContainer(
         title = "Default month calendar",
@@ -100,11 +109,18 @@ private fun DefaultWeekCalendar() {
     var selectedDay by remember { mutableStateOf(LocalDate.now()) }
     val currentMonth = YearMonth.now()
     val calendarState = rememberJCalendarState(
-        startMonth = currentMonth,
-        endMonth = currentMonth,
+        startMonth = currentMonth.minusMonths(3),
+        endMonth = currentMonth.plusMonths(3),
         mode = CalendarMode.WEEK,
-        onDateSelected = { selectedDay = it }
     )
+
+    LaunchedEffect(calendarState) {
+        snapshotFlow { calendarState.selectedDate }
+            .distinctUntilChanged()
+            .collect {
+                selectedDay = it
+            }
+    }
 
     CalendarContainer(
         title = "Default week calendar",
@@ -122,9 +138,16 @@ private fun MonthCalendarWithoutTitle() {
     val calendarState = rememberJCalendarState(
         startMonth = currentMonth.minusMonths(3),
         endMonth = currentMonth.plusMonths(3),
-        mode = CalendarMode.MONTH,
-        onDateSelected = { selectedDay = it }
+        mode = CalendarMode.MONTH
     )
+
+    LaunchedEffect(calendarState) {
+        snapshotFlow { calendarState.selectedDate }
+            .distinctUntilChanged()
+            .collect {
+                selectedDay = it
+            }
+    }
 
     CalendarContainer(
         title = "Month calendar without title",
@@ -143,11 +166,18 @@ private fun WeekCalendarWithoutTitle() {
     var selectedDay by remember { mutableStateOf(LocalDate.now()) }
     val currentMonth = YearMonth.now()
     val calendarState = rememberJCalendarState(
-        startMonth = currentMonth,
-        endMonth = currentMonth,
-        mode = CalendarMode.WEEK,
-        onDateSelected = { selectedDay = it }
+        startMonth = currentMonth.minusMonths(3),
+        endMonth = currentMonth.plusMonths(3),
+        mode = CalendarMode.WEEK
     )
+
+    LaunchedEffect(calendarState) {
+        snapshotFlow { calendarState.selectedDate }
+            .distinctUntilChanged()
+            .collect {
+                selectedDay = it
+            }
+    }
 
     CalendarContainer(
         title = "Week calendar without title",
@@ -168,9 +198,16 @@ private fun MonthCalendarWithoutOutDates() {
     val calendarState = rememberJCalendarState(
         startMonth = currentMonth.minusMonths(3),
         endMonth = currentMonth.plusMonths(3),
-        mode = CalendarMode.MONTH,
-        onDateSelected = { selectedDay = it }
+        mode = CalendarMode.MONTH
     )
+
+    LaunchedEffect(calendarState) {
+        snapshotFlow { calendarState.selectedDate }
+            .distinctUntilChanged()
+            .collect {
+                selectedDay = it
+            }
+    }
 
     CalendarContainer(
         title = "Month calendar without out dates",
@@ -191,11 +228,16 @@ private fun MonthCalendarWithModifiedDay() {
     val calendarState = rememberJCalendarState(
         startMonth = currentMonth.minusMonths(3),
         endMonth = currentMonth.plusMonths(3),
-        mode = CalendarMode.MONTH,
-        onMonthChanged = {
-            selectedMonth = it
-        }
+        mode = CalendarMode.MONTH
     )
+
+    LaunchedEffect(calendarState) {
+        snapshotFlow { calendarState.currentMonth }
+            .distinctUntilChanged()
+            .collect {
+                selectedMonth = it
+            }
+    }
 
     val emptyDates = listOf<LocalDate>(
         LocalDate.now().minusDays(5),

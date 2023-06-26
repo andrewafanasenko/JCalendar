@@ -75,7 +75,7 @@ fun JCalendar(
     },
 ) {
     Column(modifier = modifier) {
-        when (calendarState.mode) {
+        when (calendarState.calendarMode) {
             CalendarMode.MONTH -> {
                 MonthCalendar(
                     calendarState = calendarState,
@@ -195,7 +195,7 @@ private fun HandleMonthChange(
     LaunchedEffect(pagerState) {
         snapshotFlow { pagerState.currentPage }
             .map {
-                when (calendarState.mode) {
+                when (calendarState.calendarMode) {
                     CalendarMode.MONTH -> calendarState.months.getOrNull(it)?.getPrimaryYearMonth()
                     CalendarMode.WEEK -> calendarState.weeks.getOrNull(it)?.getPrimaryYearMonth()
                 }
@@ -203,7 +203,7 @@ private fun HandleMonthChange(
             .distinctUntilChanged()
             .collect { yearMonth ->
                 yearMonth?.let {
-                    calendarState.onMonthChanged.invoke(it)
+                    calendarState.selectMonth(it)
                 }
             }
     }
@@ -335,21 +335,17 @@ fun rememberJCalendarState(
     selectedDate: LocalDate = LocalDate.now(),
     firstDayOfWeek: DayOfWeek = DayOfWeek.MONDAY,
     mode: CalendarMode = CalendarMode.MONTH,
-    onDateSelected: (LocalDate) -> Unit = {},
-    onMonthChanged: (YearMonth) -> Unit = {}
 ): JCalendarState {
     return rememberSaveable(
-        startMonth, endMonth, selectedDate, firstDayOfWeek, mode, onDateSelected, onMonthChanged,
-        saver = JCalendarSaver.Saver
+        startMonth, endMonth, selectedDate, firstDayOfWeek, mode,
+        saver = JCalendarState.Saver
     ) {
         JCalendarState(
             startMonth = startMonth,
             endMonth = endMonth,
             selectedDate = selectedDate,
             firstDayOfWeek = firstDayOfWeek,
-            mode = mode,
-            onDateSelected = onDateSelected,
-            onMonthChanged = onMonthChanged
+            calendarMode = mode
         )
     }
 }
