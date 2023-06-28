@@ -85,13 +85,6 @@ class JCalendarState constructor(
         require(startMonth.isAfter(endMonth).not()) {
             "End month should be greater or equal to start month"
         }
-        val currentYearMonth = YearMonth.from(selectedDate)
-        require(currentYearMonth.isBefore(startMonth).not()) {
-            "Selected date should be within startMonth..endMonth range"
-        }
-        require(currentYearMonth.isAfter(endMonth).not()) {
-            "Selected date should be within startMonth..endMonth range"
-        }
     }
 
     private fun getMonths(
