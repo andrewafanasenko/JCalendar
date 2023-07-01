@@ -25,12 +25,13 @@ android {
     }
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = JavaVersion.VERSION_17.toString()
     }
+
     buildFeatures {
         compose = true
     }
@@ -60,7 +61,7 @@ publishing {
         register<MavenPublication>("release") {
             groupId = "com.github.andrewafanasenko"
             artifactId = "jcalendar"
-            version = "1.0.2"
+            version = "1.0.3"
 
             afterEvaluate {
                 from(components["release"])
