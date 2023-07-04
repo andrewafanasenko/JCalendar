@@ -35,6 +35,10 @@ android {
         compose = true
         buildConfig = true
     }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.3.2"
+    }
 }
 
 dependencies {
@@ -63,7 +67,7 @@ publishing {
         register<MavenPublication>("release") {
             groupId = "com.github.andrewafanasenko"
             artifactId = "jcalendar"
-            version = "1.0.6"
+            version = "1.0.7"
 
             afterEvaluate {
                 from(components["release"])
