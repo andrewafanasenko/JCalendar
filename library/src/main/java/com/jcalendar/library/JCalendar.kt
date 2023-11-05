@@ -104,17 +104,17 @@ private fun MonthCalendar(
     dayContent: @Composable (Day) -> Unit,
     outDayContent: @Composable ((Day) -> Unit)?
 ) {
-    val pagerState = rememberPagerState(initialPage = calendarState.scrollPosition)
+    val pagerState = rememberPagerState(initialPage = calendarState.scrollPosition) {
+        calendarState.months.count()
+    }
     HandleMonthChange(
         calendarState = calendarState,
-        pagerState = pagerState,
-        pageCount = calendarState.months.count()
+        pagerState = pagerState
     )
 
     HorizontalPager(
         modifier = Modifier.fillMaxWidth(),
         state = pagerState,
-        pageCount = calendarState.months.count(),
         verticalAlignment = Alignment.Top
     ) {
         Column {
@@ -140,17 +140,17 @@ private fun WeekCalendar(
     dayOfWeekTitleContent: @Composable ((DayOfWeek) -> Unit)?,
     dayContent: @Composable (Day) -> Unit
 ) {
-    val pagerState = rememberPagerState(initialPage = calendarState.scrollPosition)
+    val pagerState = rememberPagerState(initialPage = calendarState.scrollPosition) {
+        calendarState.weeks.count()
+    }
     HandleMonthChange(
         calendarState = calendarState,
-        pagerState = pagerState,
-        pageCount = calendarState.weeks.count()
+        pagerState = pagerState
     )
 
     HorizontalPager(
         modifier = Modifier.fillMaxWidth(),
         state = pagerState,
-        pageCount = calendarState.weeks.count(),
         verticalAlignment = Alignment.Top
     ) {
         Column {
@@ -173,19 +173,18 @@ private fun WeekCalendar(
 @Composable
 private fun HandleMonthChange(
     calendarState: JCalendarState,
-    pagerState: PagerState,
-    pageCount: Int
+    pagerState: PagerState
 ) {
     val coroutineScope = rememberCoroutineScope()
     calendarState.scrollForward = {
-        if ((pagerState.currentPage + 1) in 0 until pageCount) {
+        if ((pagerState.currentPage + 1) in 0 until pagerState.pageCount) {
             coroutineScope.launch {
                 pagerState.animateScrollToPage(pagerState.currentPage + 1)
             }
         }
     }
     calendarState.scrollBack = {
-        if ((pagerState.currentPage - 1) in 0 until pageCount) {
+        if ((pagerState.currentPage - 1) in 0 until pagerState.pageCount) {
             coroutineScope.launch {
                 pagerState.animateScrollToPage(pagerState.currentPage - 1)
             }
